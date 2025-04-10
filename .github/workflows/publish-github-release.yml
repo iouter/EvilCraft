@@ -1,14 +1,59 @@
-name: Publish GitHub release on version tags
+# Publishes the project to GitHub Releases, CurseForge, and Modrinth
+name: Publish Project
+
 on:
-  push:
-    tags:
-      - '*'
+  workflow_dispatch
+
+env:
+  # link to the changelog with a format code for the version
+  CHANGELOG_LOCATION: "Changelog is available [here](https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }})"
+  # type of release
+  RELEASE_TYPE: 'beta'
+
+concurrency:
+  group: publish-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  build:
+  publish:
+    name: Publish
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: write # needed to create GitHub releases
+
     steps:
-      - uses: actions/checkout@v3
-      - name: Release
-        uses: softprops/action-gh-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: 17
+    
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          cache-write-only: ${{ inputs.update-cache }}
+          generate-job-summary: false
+          gradle-home-cache-includes: |
+            caches
+            caches/retro_futura_gradle
+            notifications
+            jdks
+            wrapper
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      - name: Build Project
+        run: ./gradlew build --warning-mode all --build-cache
+
+      - name: Publish to GitHub
+        uses: softprops/action-gh-release@v2
+        with:
+          files: "build/libs/*.jar"
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          tag_name: names
