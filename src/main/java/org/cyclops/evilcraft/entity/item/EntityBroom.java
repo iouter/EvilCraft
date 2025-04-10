@@ -188,7 +188,13 @@ public class EntityBroom extends Entity {
     @Override
     public LivingEntity getControllingPassenger() {
         List<Entity> list = this.getPassengers();
-        return list.isEmpty() ? null : (LivingEntity) list.get(0);
+        if (list.isEmpty())
+            return null;
+        for (var e : list) {
+            if (e instanceof LivingEntity)
+                return (LivingEntity) e;
+        }
+        return null;
     }
 
     @Override
